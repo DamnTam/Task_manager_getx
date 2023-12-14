@@ -2,58 +2,83 @@ import 'dart:convert';
 import 'dart:developer';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
-import '../../models/user_model.dart';
+import 'package:get/get.dart';
+import 'package:task_manager_project/service/bottom_nav_Controller.dart';
 import '../../service/authController.dart';
-import '../screens/edit_profile_screen.dart';
-import '../screens/login_screen.dart';
+import '../screens/user_verificationScreen/edit_profile_screen.dart';
+import '../screens/user_verificationScreen/login_screen.dart';
 
 class ProfileSummaryCard extends StatefulWidget {
-  const ProfileSummaryCard({Key? key}) : super(key: key);
+  const ProfileSummaryCard({Key? key, this.isEditScreen = false})
+      : super(key: key);
+  final bool isEditScreen;
 
   @override
   State<ProfileSummaryCard> createState() => _ProfileSummaryCardState();
 }
 
 class _ProfileSummaryCardState extends State<ProfileSummaryCard> {
-
+  AuthController authController = Get.find<AuthController>();
 
   @override
   Widget build(BuildContext context) {
-    return ValueListenableBuilder(
-        valueListenable: AuthController.user,
-        builder: (BuildContext context, UserModel? value, Widget? child) {
-          return ListTile(
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                    builder: (context) => const EditProfileScreen()),
-              );
-            },
-            leading: AuthController.user.value?.photo == null
-                ? const CircleAvatar(
-                    child: Icon(Icons.person),
-                  )
-                : ClipOval(
-                  child: _buildUserImage(AuthController.user.value?.photo),
-            ),
-            title: Text('${value?.firstName ?? ''} ${value?.lastName ?? ' '}'),
-            subtitle: Text(value?.email ?? 'null'),
-            trailing: IconButton(
-              onPressed: () async {
-                AuthController.clearAuthCache();
-                Navigator.pushReplacement(
-                  context,
-                  MaterialPageRoute(builder: (context) => const LoginScreen()),
-                );
-              },
-              icon: const Icon(Icons.logout),
-            ),
-            tileColor: Colors.green,
-          );
-        });
+    return GetBuilder<AuthController>(builder: (controller) {
+      return ListTile(
+        onTap: () {
+          if (widget.isEditScreen == false) {
+            Get.to(const EditProfileScreen());
+          }
+        },
+        leading: controller.user?.photo == null
+            ? const CircleAvatar(
+                child: Icon(Icons.person),
+              )
+            : Container(
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: Colors.black87, // Set your desired border color here
+                    width: .5, // Set the border width
+                  ),
+                ),
+                child: ClipOval(
+                  child: _buildUserImage(controller.user?.photo ?? ''),
+                ),
+              ),
+        title: Text(
+          '${controller.user?.firstName ?? 'null'} ${controller.user?.lastName ?? 'null'}',
+          style: const TextStyle(
+            fontWeight: FontWeight.w500,
+            fontSize: 18,
+          ),
+        ),
+        subtitle: Text(
+          controller.user?.email ?? 'null',
+          style: const TextStyle(
+            fontWeight: FontWeight.w500,
+            fontSize: 14,
+          ),
+        ),
+        trailing: IconButton(
+          onPressed: () async {
+            Get.find<BottomNavController>().ChangeScreen(0);
+            AuthController.clearAuthCache();
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (context) => const LoginScreen()),
+            );
+          },
+          icon: const Icon(
+            Icons.logout,
+            color: Colors.black87,
+          ),
+        ),
+        tileColor: Colors.amber.shade200,
+      );
+    });
   }
 }
+
 //error handling on photo
 Widget _buildUserImage(String? imageBytes) {
   try {
@@ -70,7 +95,6 @@ Widget _buildUserImage(String? imageBytes) {
   } catch (e) {
     log('Error loading user image: $e');
   }
-
   // Return a default image or placeholder if an error occurs
   return const CircleAvatar(
     child: Icon(Icons.error),

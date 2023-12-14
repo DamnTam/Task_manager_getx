@@ -1,15 +1,12 @@
-import 'dart:convert';
-import 'dart:developer';
 import 'package:flutter/material.dart';
-import 'package:image_picker/image_picker.dart';
-import 'package:task_manager_project/models/user_model.dart';
-import 'package:task_manager_project/network/network_caller.dart';
-import 'package:task_manager_project/network/urls.dart';
-import 'package:task_manager_project/service/authController.dart';
-import 'package:task_manager_project/ui/screens/bottom_nav_screen.dart';
+import 'package:get/get.dart';
+
+import 'package:task_manager_project/service/photoPickerController.dart';
+import 'package:task_manager_project/service/updateProfileController.dart';
+import 'package:task_manager_project/ui/screens/task_screens/bottom_nav_screen.dart';
 import 'package:task_manager_project/ui/widgets/profileSummaryCard.dart';
 import 'package:task_manager_project/ui/widgets/snackBar.dart';
-import '../widgets/body_background.dart';
+import '../../widgets/body_background.dart';
 
 class EditProfileScreen extends StatefulWidget {
   const EditProfileScreen({Key? key}) : super(key: key);
@@ -24,8 +21,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   final TextEditingController _lastNameTEController = TextEditingController();
   final TextEditingController _mobileTEController = TextEditingController();
   final TextEditingController _passwordTEController = TextEditingController();
-  bool updateInProgress = false;
-  XFile? photo;
+  UpdateProfileController updateProfileController = Get.find<UpdateProfileController>();
+  PhotoPickerController photoPickerController=Get.find<PhotoPickerController>();
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
 
   @override
@@ -34,7 +31,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       body: SafeArea(
         child: Column(
           children: [
-            const ProfileSummaryCard(),
+            const  ProfileSummaryCard(isEditScreen: true,),
             Expanded(
               child: BodyBackground(
                 child: SafeArea(
@@ -51,10 +48,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                             ),
                             Text(
                               'Update Profile!',
-                              style: Theme
-                                  .of(context)
-                                  .textTheme
-                                  .titleLarge,
+                              style: Theme.of(context).textTheme.titleLarge,
                             ),
                             const SizedBox(
                               height: 10,
@@ -72,9 +66,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                               ),
                               validator: (String? value) {
                                 // todo - validate the email address with regex
-                                if (value
-                                    ?.trim()
-                                    .isEmpty ?? true) {
+                                if (value?.trim().isEmpty ?? true) {
                                   return 'Enter your valid email';
                                 }
                                 return null;
@@ -90,9 +82,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                               ),
                               validator: (String? value) {
                                 // todo - validate the email address with regex
-                                if (value
-                                    ?.trim()
-                                    .isEmpty ?? true) {
+                                if (value?.trim().isEmpty ?? true) {
                                   return 'Enter your name';
                                 }
                                 return null;
@@ -108,9 +98,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                               ),
                               validator: (String? value) {
                                 // todo - validate the email address with regex
-                                if (value
-                                    ?.trim()
-                                    .isEmpty ?? true) {
+                                if (value?.trim().isEmpty ?? true) {
                                   return 'Enter your last name';
                                 }
                                 return null;
@@ -127,9 +115,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                               ),
                               validator: (String? value) {
                                 // todo - validate the email address with regex
-                                if (value
-                                    ?.trim()
-                                    .isEmpty ?? true) {
+                                if (value?.trim().isEmpty ?? true) {
                                   return 'Enter your mobile';
                                 }
                                 return null;
@@ -148,19 +134,23 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                             const SizedBox(
                               height: 15,
                             ),
-                            Visibility(
-                              visible: updateInProgress == false,
-                              replacement: const Center(
-                                child: CircularProgressIndicator(),
-                              ),
-                              child: SizedBox(
-                                width: double.infinity,
-                                child: ElevatedButton(
-                                  onPressed: updateProfile,
-                                  child: const Icon(
-                                      Icons.arrow_circle_right_outlined),
-                                ),
-                              ),
+                            GetBuilder<UpdateProfileController>(
+                              builder: (updateProfileController) {
+                                return Visibility(
+                                  visible: updateProfileController.updateInProgress == false,
+                                  replacement: const Center(
+                                    child: CircularProgressIndicator(),
+                                  ),
+                                  child: SizedBox(
+                                    width: double.infinity,
+                                    child: ElevatedButton(
+                                      onPressed: updateProfile,
+                                      child: const Icon(
+                                          Icons.arrow_circle_right_outlined),
+                                    ),
+                                  ),
+                                );
+                              }
                             ),
                             const SizedBox(
                               height: 40,
@@ -180,60 +170,29 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   }
 
   Future<void> updateProfile() async {
-    if (_formKey.currentState!.validate()) {
-      Map<String, dynamic> inputData = {
-        "email": _emailTEController.text,
-        "firstName": _firstNameTEController.text,
-        "lastName": _lastNameTEController.text,
-        "mobile": _mobileTEController.text,
-      };
-      if (_passwordTEController.text.isNotEmpty) {
-        inputData["password"] = _passwordTEController.text;
+    if (!_formKey.currentState!.validate()) {
+      return;
+    }
+    final response = await updateProfileController.updateProfile(
+        _emailTEController.text,
+        _firstNameTEController.text,
+        _lastNameTEController.text,
+        _mobileTEController.text,
+        _passwordTEController.text,
+        photoPickerController.photo
+    );
+    if(response){
+      _clearTextFields();
+      if(mounted){
+        showSnackBar(context, updateProfileController.snackMessage);
+        await Future.delayed(const Duration(seconds: 1))
+            .whenComplete(() => Get.offAll(const BottomNavScreen()));
       }
-      updateInProgress = true;
-      if (mounted) {
-        setState(() {});
+    }
+    else {
+      if(mounted){
+        showSnackBar(context, updateProfileController.snackMessage, true);
       }
-      String? imageBase64;
-      if (photo != null) {
-        List<int> imageBytes = await photo!.readAsBytes();
-        imageBase64 = base64Encode(imageBytes);
-        //log(imageBase64.toString());
-        inputData['photo'] = imageBase64;
-      }
-      final response = await NetworkCaller()
-          .postRequest(Urls.profileUpdateUrl, body: inputData);
-
-      if (response.isSuccess) {
-        AuthController.updateUserInfo(UserModel(
-            email: _emailTEController.text,
-            firstName: _firstNameTEController.text,
-            lastName: _lastNameTEController.text,
-            mobile: _mobileTEController.text,
-            photo: imageBase64 ?? AuthController.user.value?.photo ?? ''));
-        if (mounted) {
-          showSnackBar(context, 'Profile Updated Successfully');
-        }
-
-        _clearTextFields();
-      } else if (response.isSuccess == false) {
-        if (mounted) {
-          showSnackBar(context, 'error occurred', true);
-        }
-      }
-
-      updateInProgress = false;
-      if (mounted) {
-        await Future.delayed(const Duration(seconds: 1)).whenComplete(() =>
-            Navigator.pushAndRemoveUntil(
-                context,
-                MaterialPageRoute(
-                    builder: (context) => const BottomNavScreen()),
-                    (route) => false));
-
-        setState(() {});
-      }
-      log(response.statusCode.toString());
     }
   }
 
@@ -263,7 +222,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           Expanded(
             flex: 2,
             child: Container(
-              decoration: const BoxDecoration(
+              decoration: const  BoxDecoration(
                   color: Colors.grey,
                   borderRadius: BorderRadius.only(
                       topLeft: Radius.circular(10),
@@ -276,19 +235,26 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             flex: 6,
             child: GestureDetector(
               onTap: () {
-                showPhotoOptionsSnackBar(context);
+                photoPickerController.showPhotoOptionsSnackBar(context);
               },
               child: Container(
-                color: Colors.white,
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  border: Border.all(color: Colors.black),
+                ),
                 padding: const EdgeInsets.only(left: 15),
                 alignment: Alignment.centerLeft,
-                child: Visibility(
-                  visible: photo == null,
-                  replacement: Text(photo?.name ?? ''),
-                  child: const Text(
-                    'Empty',
-                    style: TextStyle(color: Colors.grey),
-                  ),
+                child: GetBuilder<PhotoPickerController>(
+                  builder: (photoController) {
+                    return Visibility(
+                      visible: photoController.photo == null,
+                      replacement: Text(photoController.photo?.name ?? ''),
+                      child: const Text(
+                        'Select a Photo',
+                        style: TextStyle(color: Colors.grey),
+                      ),
+                    );
+                  }
                 ),
               ),
             ),
@@ -296,58 +262,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         ],
       ),
     );
-  }
-
-  void showPhotoOptionsSnackBar(BuildContext context) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        backgroundColor: Colors.white,
-        content: Column(
-          children: [
-            Text('Choose Photo From',style: Theme.of(context).textTheme.titleLarge,),
-           SizedBox(height: 20,),
-           Row(
-             mainAxisAlignment: MainAxisAlignment.start,
-             children: [
-               Padding(
-                 padding: const EdgeInsets.only(left: 70),
-                 child: SnackBarAction(
-                   label: 'Gallery',
-                   onPressed: () async {
-                    // Navigator.pop(context);
-                     XFile? image = await ImagePicker()
-                         .pickImage(source: ImageSource.gallery, imageQuality: 50);
-                     processImage(image);
-                   },
-                 ),
-               ),
-               Padding(
-                 padding: const EdgeInsets.only(left: 100),
-                 child: SnackBarAction(
-                   label: 'Camera',
-                   onPressed: () async {
-                    // Navigator.pop(context);
-                     XFile? image = await ImagePicker()
-                         .pickImage(source: ImageSource.camera, imageQuality: 50);
-                     processImage(image);
-                   },
-                 ),
-               ),
-             ],
-           )
-          ],
-        )
-      ),
-    );
-  }
-
-  void processImage(XFile? image) {
-    if (image != null) {
-      photo = image;
-      if (mounted) {
-        setState(() {});
-      }
-    }
   }
 
 }

@@ -1,10 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:task_manager_project/network/network_caller.dart';
-import 'package:task_manager_project/network/urls.dart';
-import 'package:task_manager_project/ui/screens/pin_Verification_screen.dart';
+import 'package:task_manager_project/service/emailVerificationController.dart';
+import 'package:task_manager_project/ui/screens/user_verificationScreen/pin_Verification_screen.dart';
 import 'package:task_manager_project/ui/widgets/snackBar.dart';
-
-import '../widgets/body_background.dart';
+import 'package:get/get.dart';
+import '../../widgets/body_background.dart';
 
 class ForgotPasswordScreen extends StatefulWidget {
   const ForgotPasswordScreen({super.key});
@@ -15,7 +14,7 @@ class ForgotPasswordScreen extends StatefulWidget {
 
 class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   TextEditingController emailController = TextEditingController();
-  bool emailInProgress = false;
+  EmailVerificationController emailVerificationController=Get.find<EmailVerificationController>();
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
 
   @override
@@ -57,7 +56,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                       ),
                       validator: (String? value) {
                         if (value?.trim().isEmpty ?? true) {
-                          return 'Enter your first name';
+                          return 'Enter your email';
                         }
                         return null;
                       },
@@ -66,18 +65,23 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                   const SizedBox(
                     height: 15,
                   ),
-                  Visibility(
-                    visible: emailInProgress == false,
-                    replacement: const Center(
-                      child: CircularProgressIndicator(),
-                    ),
-                    child: SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton(
-                        onPressed: emailVerification,
-                        child: const Icon(Icons.arrow_circle_right_outlined),
-                      ),
-                    ),
+                  GetBuilder<EmailVerificationController>(
+                    builder: (emailController) {
+                      return Visibility(
+                        visible: emailController.emailInProgress == false,
+                        replacement: const Center(
+                          child: CircularProgressIndicator(),
+                        ),
+                        child: SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton(
+                            onPressed: emailVerification,
+                            child: const Icon(
+                                Icons.arrow_circle_right_outlined),
+                          ),
+                        ),
+                      );
+                    }
                   ),
                   const SizedBox(
                     height: 40,
@@ -113,33 +117,24 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   }
 
   Future<void> emailVerification() async {
-    if (_formKey.currentState!.validate()) {
-      emailInProgress = true;
-      if (mounted) {
-        setState(() {});
+    if (!_formKey.currentState!.validate()) {
+      return;
+    }
+    final response=await emailVerificationController.emailVerification(emailController.text);
+    if(response){
+      if(mounted){
+        showSnackBar(context, emailVerificationController.snackMessage);
       }
-      final response = await NetworkCaller()
-          .getRequest(Urls.emailVerificationUrls(emailController.text));
-      if (response.jsonBody['status'] == 'success') {
-        if (mounted) {
-          showSnackBar(context, 'Success!!!Check your Email');
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-                builder: (context) => PinVerificationScreen(
-                      email: emailController.text,
-                    )),
-          );
-        }
-      } else {
-        if (mounted) {
-          showSnackBar(context, 'Failed!', true);
-        }
-      }
-      emailInProgress = false;
-      if (mounted) {
-        setState(() {});
+      Get.to(PinVerificationScreen(email: emailController.text));
+
+    }
+    else{
+      if(mounted){
+        showSnackBar(context, emailVerificationController.snackMessage,true);
       }
     }
+
+
+    }
   }
-}
+

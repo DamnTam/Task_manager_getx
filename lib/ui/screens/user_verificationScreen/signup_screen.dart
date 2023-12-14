@@ -1,10 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:task_manager_project/network/network_caller.dart';
-import 'package:task_manager_project/network/network_response.dart';
-import 'package:task_manager_project/network/urls.dart';
-import 'package:task_manager_project/ui/screens/login_screen.dart';
+import 'package:get/get.dart';
+import 'package:task_manager_project/service/signUpController.dart';
+import 'package:task_manager_project/ui/screens/user_verificationScreen/login_screen.dart';
 import 'package:task_manager_project/ui/widgets/snackBar.dart';
-import '../widgets/body_background.dart';
+import '../../widgets/body_background.dart';
 
 class SignUpScreen extends StatefulWidget {
   const SignUpScreen({super.key});
@@ -20,8 +19,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
   final TextEditingController _mobileTEController = TextEditingController();
   final TextEditingController _passwordTEController = TextEditingController();
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
-
-  bool _signUpInProgress = false;
+  SignUpController signUpController = Get.find<SignUpController>();
 
   @override
   Widget build(BuildContext context) {
@@ -131,22 +129,21 @@ class _SignUpScreenState extends State<SignUpScreen> {
                     ),
                     SizedBox(
                       width: double.infinity,
-                      child: Visibility(
-                        visible: _signUpInProgress == false,
-                        replacement: const Center(
-                          child: CircularProgressIndicator(),
-                        ),
-                        child: Visibility(
-                          visible: _signUpInProgress == false,
-                          replacement: const Center(
-                            child: CircularProgressIndicator(),
-                          ),
-                          child: ElevatedButton(
-                            onPressed: _signUp,
-                            child:
-                                const Icon(Icons.arrow_circle_right_outlined),
-                          ),
-                        ),
+                      child: GetBuilder<SignUpController>(
+                        builder: (signUpController) {
+                          return Visibility(
+                            visible: signUpController.signUpInProgress == false,
+                            replacement: const Center(
+                              child: CircularProgressIndicator(),
+                            ),
+                            child: ElevatedButton(
+                              onPressed: _signUp,
+                              child:
+                              const Icon(Icons.arrow_circle_right_outlined),
+                            ),
+                          );
+
+                        }
                       ),
                     ),
                     const SizedBox(
@@ -184,38 +181,25 @@ class _SignUpScreenState extends State<SignUpScreen> {
   }
 
   Future<void> _signUp() async {
-   if(_formKey.currentState!.validate()){
-     _signUpInProgress = true;
-     if (mounted) {
-       setState(() {});
-     }
-     NetworkResponse response =
-     await NetworkCaller().postRequest(Urls.registrationUrl, body: {
-       "email": _emailTEController.text,
-       "firstName": _firstNameTEController.text,
-       "lastName": _lastNameTEController.text,
-       "mobile": _mobileTEController.text,
-       "password": _passwordTEController.text,
-       "photo" : null,
-     });
-     _signUpInProgress = false;
-     if (mounted) {
-       setState(() {});
-     }
-     if (response.isSuccess) {
-       _clearTextFields();
-       if (mounted) {
-         showSnackBar(context, 'Account has been created', false);
-         Navigator.pushAndRemoveUntil(
-             context,
-             MaterialPageRoute(builder: (context) => const LoginScreen()),
-                 (route) => false);
-       }
-     } else {
-       if (mounted) {
-         showSnackBar(context, 'Account creation failed!!!', true);
-       }
-     }
+    if (!_formKey.currentState!.validate()) {
+      return;
+    }
+    final response = await signUpController.signUp(
+        _emailTEController.text,
+        _firstNameTEController.text,
+        _lastNameTEController.text,
+        _mobileTEController.text,
+        _passwordTEController.text);
+    if (response) {
+      _clearTextFields();
+      if (mounted) {
+        showSnackBar(context, signUpController.snackMessage);
+        Get.offAll(const LoginScreen());
+      }
+    } else {
+      if (mounted) {
+        showSnackBar(context, signUpController.snackMessage, true);
+      }
     }
   }
 

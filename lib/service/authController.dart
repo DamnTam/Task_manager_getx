@@ -1,41 +1,43 @@
 import 'dart:convert';
+import 'package:get/get.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:task_manager_project/models/user_model.dart';
-import 'package:flutter/material.dart';
 
-class  AuthController {
+class  AuthController extends GetxController{
   static String? token;
- // static UserModel? user;
-  static ValueNotifier<UserModel?> user = ValueNotifier<UserModel?>(UserModel());
+   UserModel? user;
 
-  /// save user data in shared prefernce
-  static Future<void> saveUserInfo(String tokenn, UserModel model) async {
+  /// save user data in shared preference
+   Future<void> saveUserInfo(String tokenn, UserModel model) async {
     SharedPreferences sharedPreferences = await SharedPreferences.getInstance();
     await sharedPreferences.setString('token', tokenn);
     await sharedPreferences.setString('userData', jsonEncode(model));
     token=tokenn;
-    user.value=model;
+    user=model;
+    update();
   }
-
-  static Future<void> updateUserInfo(UserModel model) async {
+  /// update user data in shared preference
+   Future<void> updateUserInfo(UserModel model) async {
     SharedPreferences sharedPreferences = await SharedPreferences.getInstance();
     await sharedPreferences.setString('userData', jsonEncode(model));
-    user.value = model;
+    user = model;
+    update();
     // Update the ValueNotifier with the new user information
     //userNotifier.value = model;
   }
 
   /// initialize auth data
-  static Future<void> initializeUser() async {
+   Future<void> initializeUser() async {
     SharedPreferences sharedPreferences = await SharedPreferences.getInstance();
     token = sharedPreferences.getString('token');
-    user.value = UserModel.fromJson(jsonDecode(sharedPreferences.getString('userData') ?? '{}'));
+    user = UserModel.fromJson(jsonDecode(sharedPreferences.getString('userData') ?? '{}'));
+    update();
   }
 
-  static Future<bool> chechAuthState() async {
+   Future<bool> checkAuthState() async {
     SharedPreferences sharedPreferences=await SharedPreferences.getInstance();
     token = sharedPreferences.getString('token');
-
+    update();
     if (token != null) {
       initializeUser();
       return true;

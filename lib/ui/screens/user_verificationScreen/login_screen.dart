@@ -1,19 +1,14 @@
 import 'package:flutter/material.dart';
-import 'package:task_manager_project/models/user_model.dart';
-import 'package:task_manager_project/network/network_caller.dart';
-import 'package:task_manager_project/network/network_response.dart';
-import 'package:task_manager_project/network/urls.dart';
-import 'package:task_manager_project/ui/screens/bottom_nav_screen.dart';
-import 'package:task_manager_project/ui/screens/forgot_password_screen.dart';
-import 'package:task_manager_project/ui/screens/signup_screen.dart';
+import 'package:get/get.dart';
+import 'package:task_manager_project/service/loginController.dart';
+import 'package:task_manager_project/ui/screens/task_screens/bottom_nav_screen.dart';
+import 'package:task_manager_project/ui/screens/user_verificationScreen/forgot_password_screen.dart';
+import 'package:task_manager_project/ui/screens/user_verificationScreen/signup_screen.dart';
 import 'package:task_manager_project/ui/widgets/body_background.dart';
 import 'package:task_manager_project/ui/widgets/snackBar.dart';
 
-import '../../service/authController.dart';
-
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
-
   @override
   State<LoginScreen> createState() => _LoginScreenState();
 }
@@ -22,7 +17,7 @@ class _LoginScreenState extends State<LoginScreen> {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   final GlobalKey<FormState> _globalKey = GlobalKey<FormState>();
-  bool isLogin = false;
+  LoginController loginController = Get.find<LoginController>();
 
   @override
   Widget build(BuildContext context) {
@@ -83,15 +78,20 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                     SizedBox(
                       width: double.infinity,
-                      child: Visibility(
-                        visible: isLogin == false,
-                        replacement: const Center(
-                          child: CircularProgressIndicator(),
-                        ),
-                        child: ElevatedButton(
-                          onPressed: login,
-                          child: const Icon(Icons.arrow_circle_right_outlined),
-                        ),
+                      child: GetBuilder<LoginController>(
+                          builder: (loginController) {
+                            return Visibility(
+                              visible: loginController.isLogin == false,
+                              replacement: const Center(
+                                child: CircularProgressIndicator(),
+                              ),
+                              child: ElevatedButton(
+                                onPressed: login,
+                                child: const Icon(
+                                    Icons.arrow_circle_right_outlined),
+                              ),
+                            );
+                          }
                       ),
                     ),
                     const SizedBox(
@@ -104,7 +104,7 @@ class _LoginScreenState extends State<LoginScreen> {
                               context,
                               MaterialPageRoute(
                                   builder: (context) =>
-                                      const ForgotPasswordScreen()));
+                                  const ForgotPasswordScreen()));
                         },
                         child: const Text(
                           'Forgot Password?',
@@ -128,7 +128,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                 context,
                                 MaterialPageRoute(
                                     builder: (context) =>
-                                        const SignUpScreen()));
+                                    const SignUpScreen()));
                           },
                           child: const Text(
                             'Sign Up',
@@ -153,37 +153,20 @@ class _LoginScreenState extends State<LoginScreen> {
     _passwordController.dispose();
     super.dispose();
   }
-
-  Future<void> login() async {
-    if (_globalKey.currentState!.validate()) {
-      isLogin = true;
-      if (mounted) {
-        setState(() {});
+  Future<void> login() async{
+    if (!_globalKey.currentState!.validate()) {
+      return;
+    }
+    final response=await loginController.login(_emailController.text, _passwordController.text);
+    if(response){
+      Get.off(const BottomNavScreen());
+      if(mounted){
+        showSnackBar(context, loginController.snackMessage);
       }
-      NetworkResponse response = await NetworkCaller()
-          .postRequest(Urls.loginUrl, body: {
-        'email': _emailController.text,
-        'password': _passwordController.text
-      });
-      isLogin = false;
-      if (mounted) {
-        setState(() {});
-      }
-      //print(response.jsonBody);
-      if (response.isSuccess) {
-        await AuthController.saveUserInfo(response.jsonBody['token'],
-            UserModel.fromJson(response.jsonBody['data']));
-        // await AuthController.initializeUser();
-        if (mounted) {
-          Navigator.pushAndRemoveUntil(
-              context,
-              MaterialPageRoute(builder: (context) => const BottomNavScreen()),
-              (route) => false);
-        }
-      } else {
-        if (mounted) {
-          showSnackBar(context, 'Incorrect Password!!!', true);
-        }
+    }
+    else if(response==false){
+      if(mounted){
+        showSnackBar(context, loginController.snackMessage,true);
       }
     }
   }

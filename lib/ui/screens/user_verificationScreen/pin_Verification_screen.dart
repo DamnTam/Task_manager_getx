@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:task_manager_project/network/network_caller.dart';
-import 'package:task_manager_project/network/urls.dart';
-import 'package:task_manager_project/ui/screens/login_screen.dart';
-import 'package:task_manager_project/ui/screens/reset_password_screen.dart';
+import 'package:get/get.dart';
+import 'package:task_manager_project/service/otpController.dart';
+import 'package:task_manager_project/ui/screens/user_verificationScreen/login_screen.dart';
+import 'package:task_manager_project/ui/screens/user_verificationScreen/reset_password_screen.dart';
 import 'package:task_manager_project/ui/widgets/snackBar.dart';
-import '../widgets/body_background.dart';
+import '../../widgets/body_background.dart';
 import 'package:pin_code_fields/pin_code_fields.dart';
 
 class PinVerificationScreen extends StatefulWidget {
@@ -19,6 +19,7 @@ class _PinVerificationScreenState extends State<PinVerificationScreen> {
   TextEditingController otpController=TextEditingController();
   bool verifyInProgress=false;
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
+  OtpController otpControllers = Get.find<OtpController>();
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -86,16 +87,21 @@ class _PinVerificationScreenState extends State<PinVerificationScreen> {
                   const SizedBox(
                     height: 15,
                   ),
-                  Visibility(
-                    visible: verifyInProgress==false,
-                    replacement:const  Center(child: CircularProgressIndicator(),),
-                    child: SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton(
-                        onPressed: recoverVerifyOtp,
-                        child: const Text('Verify'),
-                      ),
-                    ),
+                  GetBuilder<OtpController>(
+                    builder: (otpController) {
+                      return Visibility(
+                        visible: otpController.verifyInProgress == false,
+                        replacement: const Center(
+                          child: CircularProgressIndicator(),),
+                        child: SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton(
+                            onPressed: recoverVerifyOtp,
+                            child: const Text('Verify'),
+                          ),
+                        ),
+                      );
+                    }
                   ),
                   const SizedBox(
                     height: 40,
@@ -112,10 +118,8 @@ class _PinVerificationScreenState extends State<PinVerificationScreen> {
                       ),
                       TextButton(
                         onPressed: () {
-                          Navigator.pushAndRemoveUntil(context,
-                              MaterialPageRoute(
-                                  builder: (context) => const LoginScreen()), (
-                                  route) => false);
+                          Navigator.pushAndRemoveUntil(context, MaterialPageRoute(
+                                  builder: (context) => const LoginScreen()), (route) => false);
                         },
                         child: const Text(
                           'Sign In',
@@ -134,37 +138,24 @@ class _PinVerificationScreenState extends State<PinVerificationScreen> {
   }
 
   Future<void> recoverVerifyOtp() async {
-    if (otpController.text.isNotEmpty) {
-      verifyInProgress = true;
+    if(!_formKey.currentState!.validate()){
+      return ;
+    }
+    final response= await otpControllers.recoverVerifyOtp(widget.email, otpController.text);
+    if(response){
       if (mounted) {
-        setState(() {});
+        showSnackBar(context, otpControllers.snackMessage);
+        Get.to(ResetPasswordScreen(
+          email: widget.email,
+          otp: otpController.text,
+        ));
       }
-      final response = await NetworkCaller()
-          .getRequest(Urls.verifyOtpUrls(widget.email, otpController.text));
-      if (response.jsonBody['status'] == 'success') {
-        if (mounted) {
-          showSnackBar(context, 'Success');
-          Navigator.push(
-              context,
-              MaterialPageRoute(
-                  builder: (context) => ResetPasswordScreen(
-                        email: widget.email,
-                        otp: otpController.text,
-                      )));
-        }
-      } else if (response.jsonBody['status'] == 'fail') {
-        if (mounted) {
-          showSnackBar(context, 'Invalid OTP!!!!', true);
-        }
-      }
-      verifyInProgress = false;
-      if (mounted) {
-        setState(() {});
-      }
-    } else {
-      if (mounted) {
-        showSnackBar(context, 'Enter valid otp', true);
+    }
+    else{
+      if(mounted){
+        showSnackBar(context, otpControllers.snackMessage,true);
+
       }
     }
   }
-}
+  }

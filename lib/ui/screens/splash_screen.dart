@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:task_manager_project/ui/screens/bottom_nav_screen.dart';
-import 'package:task_manager_project/ui/screens/login_screen.dart';
+import 'package:get/get.dart';
+import 'package:task_manager_project/ui/screens/task_screens/bottom_nav_screen.dart';
+import 'package:task_manager_project/ui/screens/user_verificationScreen/login_screen.dart';
 import '../../service/authController.dart';
 import '../widgets/body_background.dart';
 import 'package:lottie/lottie.dart';
@@ -20,14 +21,9 @@ class _SplashScreenState extends State<SplashScreen> {
   }
 
   goToLogin() async {
-    bool isLoggedIn = await AuthController.chechAuthState();
+    bool isLoggedIn = await Get.find<AuthController>().checkAuthState();
     Future.delayed(const Duration(seconds: 7)).then((value) {
-      Navigator.pushAndRemoveUntil(
-          context,
-          MaterialPageRoute(
-              builder: (context) =>
-                  isLoggedIn ? const BottomNavScreen() : const LoginScreen()),
-          (route) => false);
+      Get.offAll(isLoggedIn ? const BottomNavScreen() : const LoginScreen());
     });
   }
 
@@ -39,8 +35,11 @@ class _SplashScreenState extends State<SplashScreen> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Lottie.asset('asset/images/splash.json',width: 150),
-              Text('Task Manager',style: Theme.of(context).textTheme.titleLarge,)
+              Lottie.asset('asset/images/splash.json', width: 150),
+              Text(
+                'Task Manager',
+                style: Theme.of(context).textTheme.titleLarge,
+              )
             ],
           ),
         ),
