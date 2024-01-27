@@ -18,8 +18,13 @@ class FetchInTaskController extends GetxController{
       newTaskModel = NewTaskModel.fromJson(response.jsonBody);
       return true;
     }
+    else if(response.statusCode==401){
+      return false;
+    }
 
     return false;
     // log(newTaskModel.taskList!.length.toString());
   }
 }
+
+

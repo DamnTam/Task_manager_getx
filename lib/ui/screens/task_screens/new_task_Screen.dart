@@ -114,3 +114,4 @@ class _NewTaskScreenState extends State<NewTaskScreen> {
     // log(newTaskModel.taskList!.length.toString());
   }
 }
+ 

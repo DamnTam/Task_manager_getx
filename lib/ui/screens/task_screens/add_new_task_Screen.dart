@@ -28,7 +28,7 @@ class _AddNewTaskScreenState extends State<AddNewTaskScreen> {
         body: SafeArea(
       child: Column(
         children: [
-          ProfileSummaryCard(),
+          const ProfileSummaryCard(),
           Expanded(
               child: BodyBackground(
             child: SingleChildScrollView(
